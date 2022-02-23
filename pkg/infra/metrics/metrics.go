@@ -97,6 +97,9 @@ var (
 	// MDBDataSourceQueryByID is a metric counter for getting datasource by id
 	MDBDataSourceQueryByID prometheus.Counter
 
+	// MDBSecretQueryByID is a metric counter for getting secret by id
+	MDBSecretQueryByID prometheus.Counter
+
 	// LDAPUsersSyncExecutionTime is a metric summary for LDAP users sync execution duration
 	LDAPUsersSyncExecutionTime prometheus.Summary
 

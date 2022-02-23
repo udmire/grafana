@@ -86,6 +86,8 @@ func (*OSSMigrations) AddMigration(mg *Migrator) {
 			addCommentMigrations(mg)
 		}
 	}
+
+	addSecretStoreMigration(mg)
 }
 
 func addMigrationLogMigrations(mg *Migrator) {

@@ -62,3 +62,19 @@ type DataSourceCreated struct {
 	UID       string    `json:"uid"`
 	OrgID     int64     `json:"org_id"`
 }
+
+type SecretDeleted struct {
+	Timestamp time.Time `json:"timestamp"`
+	EntityUID string    `json:"entity_uid"`
+	ID        int64     `json:"id"`
+	UID       string    `json:"uid"`
+	OrgID     int64     `json:"org_id"`
+}
+
+type SecretCreated struct {
+	Timestamp time.Time `json:"timestamp"`
+	EntityUID string    `json:"entity_uid"`
+	ID        int64     `json:"id"`
+	UID       string    `json:"uid"`
+	OrgID     int64     `json:"org_id"`
+}
