@@ -20827,7 +20827,7 @@ __metadata:
     jsurl: ^0.1.5
     lerna: ^4.0.0
     lezer: 0.13.5
-    lezer-promql: 0.20.0
+    lezer-promql: 0.21.0
     lezer-tree: 0.13.2
     lint-staged: 12.3.3
     lodash: 4.17.21
@@ -24966,12 +24966,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lezer-promql@npm:0.20.0":
-  version: 0.20.0
-  resolution: "lezer-promql@npm:0.20.0"
+"lezer-promql@npm:0.21.0":
+  version: 0.21.0
+  resolution: "lezer-promql@npm:0.21.0"
   peerDependencies:
-    lezer: ^0.13.0
-  checksum: 9cf76d60aa84b27a1ed5ff7a3d2e407a2d752fd0282777d740bf5e8bf00764a1c8e9e3a835246d9257447231fa4ce5dc4f85d4acb91c6819089ff16874a75382
+    "@lezer/common": ^0.15.11
+  checksum: 1c0524d10c558698b474e61c0314dfaf9486cb66bb879a53a46723209ddb9475d4146dd32241c5a4bacc153a87bb1434b6eb4b2d00c16467c5d8fe0ce40202b6
   languageName: node
   linkType: hard
 
