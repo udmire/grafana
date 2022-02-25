@@ -2,10 +2,10 @@ package sqlstore
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/grafana/grafana/pkg/events"
-	"github.com/grafana/grafana/pkg/infra/metrics"
 	"github.com/grafana/grafana/pkg/models"
 	"xorm.io/xorm"
 )
@@ -13,7 +13,7 @@ import (
 // GetSecret adds a secret to the query model by querying by org_id as well as
 // either uid (preferred), id, or name and is added to the bus.
 func (ss *SQLStore) GetSecret(ctx context.Context, query *models.GetSecretQuery) error {
-	metrics.MDBSecretQueryByID.Inc()
+	// metrics.MDBSecretQueryByID.Inc()
 
 	return ss.WithDbSession(ctx, func(sess *DBSession) error {
 		if query.OrgId == 0 || (query.Id == 0 && len(query.EntityUid) == 0) {
@@ -24,7 +24,7 @@ func (ss *SQLStore) GetSecret(ctx context.Context, query *models.GetSecretQuery)
 		has, err := sess.Get(secret)
 
 		if err != nil {
-			sqlog.Error("Failed getting data source", "err", err, "uid", query.EntityUid, "id", query.Id, "orgId", query.OrgId)
+			sqlog.Error("Failed getting secret", "err", err, "uid", query.EntityUid, "id", query.Id, "orgId", query.OrgId)
 			return err
 		} else if !has {
 			return models.ErrSecretNotFound
@@ -101,6 +101,13 @@ func (ss *SQLStore) AddSecret(ctx context.Context, cmd *models.AddSecretCommand)
 			SecureJsonData: cmd.EncryptedSecureJsonData,
 			Created:        time.Now(),
 			Updated:        time.Now(),
+		}
+
+		if _, err := sess.Insert(s); err != nil {
+			if dialect.IsUniqueConstraintViolation(err) && strings.Contains(strings.ToLower(dialect.ErrorMessage(err)), "entity_uid") {
+				return models.ErrSecretEntityUidExists
+			}
+			return err
 		}
 
 		cmd.Result = s

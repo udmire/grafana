@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/secrets"
+	"github.com/grafana/grafana/pkg/services/secretstore"
 	"github.com/grafana/grafana/pkg/services/sqlstore"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/tsdb/azuremonitor/azcredentials"
@@ -27,6 +28,7 @@ type Service struct {
 	Bus                bus.Bus
 	SQLStore           *sqlstore.SQLStore
 	SecretsService     secrets.Service
+	SecretStore        *secretstore.Service
 	features           featuremgmt.FeatureToggles
 	permissionsService accesscontrol.PermissionsService
 
@@ -56,12 +58,13 @@ type cachedDecryptedJSON struct {
 
 func ProvideService(
 	bus bus.Bus, store *sqlstore.SQLStore, secretsService secrets.Service, features featuremgmt.FeatureToggles,
-	ac accesscontrol.AccessControl, permissionsServices accesscontrol.PermissionsServices,
+	ac accesscontrol.AccessControl, permissionsServices accesscontrol.PermissionsServices, secretStore *secretstore.Service,
 ) *Service {
 	s := &Service{
 		Bus:            bus,
 		SQLStore:       store,
 		SecretsService: secretsService,
+		SecretStore:    secretStore,
 		ptc: proxyTransportCache{
 			cache: make(map[int64]cachedRoundTripper),
 		},
@@ -118,15 +121,57 @@ func NewNameScopeResolver(db DataSourceRetriever) (string, accesscontrol.Attribu
 }
 
 func (s *Service) GetDataSource(ctx context.Context, query *models.GetDataSourceQuery) error {
-	return s.SQLStore.GetDataSource(ctx, query)
+	err := s.SQLStore.GetDataSource(ctx, query)
+	if err != nil {
+		return err
+	}
+	secretsQuery := &models.GetSecretQuery{OrgId: query.OrgId, EntityUid: query.Uid}
+	err = s.SecretStore.GetSecret(ctx, secretsQuery)
+	if err != nil {
+		return err
+	}
+	query.Result.SecureJsonData = secretsQuery.Result.SecureJsonData
+	return nil
 }
 
 func (s *Service) GetDataSources(ctx context.Context, query *models.GetDataSourcesQuery) error {
-	return s.SQLStore.GetDataSources(ctx, query)
+	err := s.SQLStore.GetDataSources(ctx, query)
+	if err != nil {
+		return err
+	}
+	secretsQuery := &models.GetSecretsQuery{OrgId: query.OrgId}
+	err = s.SecretStore.GetSecrets(ctx, secretsQuery)
+	if err != nil {
+		return err
+	}
+	for _, ds := range query.Result {
+		for _, sc := range secretsQuery.Result {
+			if sc.EntityUid == ds.Uid {
+				ds.SecureJsonData = sc.SecureJsonData
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Service) GetDataSourcesByType(ctx context.Context, query *models.GetDataSourcesByTypeQuery) error {
-	return s.SQLStore.GetDataSourcesByType(ctx, query)
+	err := s.SQLStore.GetDataSourcesByType(ctx, query)
+	if err != nil {
+		return err
+	}
+	secretsQuery := &models.GetSecretsQuery{}
+	err = s.SecretStore.GetSecrets(ctx, secretsQuery)
+	if err != nil {
+		return err
+	}
+	for _, ds := range query.Result {
+		for _, sc := range secretsQuery.Result {
+			if sc.EntityUid == ds.Uid {
+				ds.SecureJsonData = sc.SecureJsonData
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Service) AddDataSource(ctx context.Context, cmd *models.AddDataSourceCommand) error {
@@ -137,6 +182,11 @@ func (s *Service) AddDataSource(ctx context.Context, cmd *models.AddDataSourceCo
 	}
 
 	if err := s.SQLStore.AddDataSource(ctx, cmd); err != nil {
+		return err
+	}
+
+	secretCmd := &models.AddSecretCommand{OrgId: cmd.OrgId, EntityUid: cmd.Uid, SecureJsonData: cmd.SecureJsonData}
+	if err := s.SecretStore.AddSecret(ctx, secretCmd); err != nil {
 		return err
 	}
 
@@ -156,21 +206,43 @@ func (s *Service) AddDataSource(ctx context.Context, cmd *models.AddDataSourceCo
 }
 
 func (s *Service) DeleteDataSource(ctx context.Context, cmd *models.DeleteDataSourceCommand) error {
-	return s.SQLStore.DeleteDataSource(ctx, cmd)
-}
-
-func (s *Service) UpdateDataSource(ctx context.Context, cmd *models.UpdateDataSourceCommand) error {
-	var err error
-	cmd.EncryptedSecureJsonData, err = s.SecretsService.EncryptJsonData(ctx, cmd.SecureJsonData, secrets.WithoutScope())
-	if err != nil {
+	if err := s.SQLStore.DeleteDataSource(ctx, cmd); err != nil {
 		return err
 	}
 
-	return s.SQLStore.UpdateDataSource(ctx, cmd)
+	secretCmd := &models.DeleteSecretCommand{OrgID: cmd.OrgID, EntityUID: cmd.UID}
+	if err := s.SecretStore.DeleteSecret(ctx, secretCmd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) UpdateDataSource(ctx context.Context, cmd *models.UpdateDataSourceCommand) error {
+	if err := s.SQLStore.UpdateDataSource(ctx, cmd); err != nil {
+		return err
+	}
+
+	secretCmd := &models.UpdateSecretCommand{OrgId: cmd.OrgId, EntityUid: cmd.Uid, SecureJsonData: cmd.SecureJsonData}
+	if err := s.SecretStore.UpdateSecret(ctx, secretCmd); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Service) GetDefaultDataSource(ctx context.Context, query *models.GetDefaultDataSourceQuery) error {
-	return s.SQLStore.GetDefaultDataSource(ctx, query)
+	err := s.SQLStore.GetDefaultDataSource(ctx, query)
+	if err != nil {
+		return err
+	}
+	secretsQuery := &models.GetSecretQuery{OrgId: query.OrgId, EntityUid: query.Result.Uid}
+	err = s.SecretStore.GetSecret(ctx, secretsQuery)
+	if err != nil {
+		return err
+	}
+	query.Result.SecureJsonData = secretsQuery.Result.SecureJsonData
+	return nil
 }
 
 func (s *Service) GetHTTPClient(ds *models.DataSource, provider httpclient.Provider) (*http.Client, error) {

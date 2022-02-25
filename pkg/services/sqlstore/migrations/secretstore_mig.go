@@ -5,7 +5,7 @@ import . "github.com/grafana/grafana/pkg/services/sqlstore/migrator"
 func addSecretStoreMigration(mg *Migrator) {
 	// new table
 	var tableV1 = Table{
-		Name: "secrets",
+		Name: "secret",
 		Columns: []*Column{
 			{Name: "id", Type: DB_BigInt, IsPrimaryKey: true, IsAutoIncrement: true},
 			{Name: "org_id", Type: DB_BigInt, Nullable: false},
