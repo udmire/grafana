@@ -37,6 +37,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/searchusers"
 	"github.com/grafana/grafana/pkg/services/searchusers/filters"
 	"github.com/grafana/grafana/pkg/services/sqlstore"
+	stars "github.com/grafana/grafana/pkg/services/stars"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/web"
 	"github.com/stretchr/testify/require"
@@ -280,6 +281,7 @@ type accessControlScenarioContext struct {
 	cfg *setting.Cfg
 
 	dashboardsStore dashboards.Store
+	starsManager    stars.Manager
 }
 
 func setAccessControlPermissions(acmock *accesscontrolmock.Mock, perms []*accesscontrol.Permission, org int64) {
@@ -353,6 +355,8 @@ func setupHTTPServerWithCfg(t *testing.T, useFakeAccessControl, enableAccessCont
 
 	dashboardsStore := dashboardsstore.ProvideDashboardStore(db)
 
+	starsFake := starstests.NewStarsManagerFake()
+
 	routeRegister := routing.NewRouteRegister()
 	// Create minimal HTTP Server
 	hs := &HTTPServer{
@@ -365,6 +369,7 @@ func setupHTTPServerWithCfg(t *testing.T, useFakeAccessControl, enableAccessCont
 		SQLStore:           db,
 		searchUsersService: searchusers.ProvideUsersService(bus, filters.ProvideOSSSearchUserFilter()),
 		dashboardService:   dashboardservice.ProvideDashboardService(dashboardsStore),
+		starsService:       starsFake,
 	}
 
 	// Defining the accesscontrol service has to be done before registering routes
@@ -416,6 +421,7 @@ func setupHTTPServerWithCfg(t *testing.T, useFakeAccessControl, enableAccessCont
 		db:              db,
 		cfg:             cfg,
 		dashboardsStore: dashboardsStore,
+		starsService:    starsFake,
 	}
 }
 
