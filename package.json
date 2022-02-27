@@ -263,7 +263,7 @@
     "@react-stately/collections": "3.3.4",
     "@react-stately/menu": "3.2.3",
     "@react-stately/tree": "3.2.0",
-    "@reduxjs/toolkit": "1.7.2",
+    "@reduxjs/toolkit": "1.8.0",
     "@sentry/browser": "6.17.4",
     "@sentry/types": "6.17.4",
     "@sentry/utils": "6.17.4",
