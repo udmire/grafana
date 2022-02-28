@@ -46,10 +46,10 @@ export const heatmapLayer: MapLayerRegistryItem<HeatmapConfig> = {
    */
   create: async (map: Map, options: MapLayerOptions<HeatmapConfig>, theme: GrafanaTheme2) => {
     const config = { ...defaultOptions, ...options.config };
-    
+
     const location = await getLocationMatchers(options.location);
     const source = new FrameVectorSource(location);
-    const WEIGHT_KEY = "_weight";
+    const WEIGHT_KEY = '_weight';
 
     // Create a new Heatmap layer
     // Weight function takes a feature as attribute and returns a normalized weight value
@@ -72,9 +72,9 @@ export const heatmapLayer: MapLayerRegistryItem<HeatmapConfig> = {
         source.update(frame);
 
         const weightDim = getScaledDimension(frame, config.weight);
-        source.forEachFeature( (f) => {
+        source.forEachFeature((f) => {
           const idx = f.get('rowIndex') as number;
-          if(idx != null) {
+          if (idx != null) {
             f.set(WEIGHT_KEY, weightDim.get(idx));
           }
         });
