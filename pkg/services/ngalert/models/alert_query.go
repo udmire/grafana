@@ -174,6 +174,21 @@ func (aq *AlertQuery) GetDatasource() (string, error) {
 	return aq.DatasourceUID, nil
 }
 
+func (aq *AlertQuery) GetQuery() (string, error) {
+	if aq.modelProps == nil {
+		err := aq.setModelProps()
+		if err != nil {
+			return "", err
+		}
+	}
+	query, ok := aq.modelProps["expr"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed to cast query to string: %v", aq.modelProps["expr"])
+	}
+
+	return query, nil
+}
+
 func (aq *AlertQuery) GetModel() ([]byte, error) {
 	err := aq.setMaxDatapoints()
 	if err != nil {

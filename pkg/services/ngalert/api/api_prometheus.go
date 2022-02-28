@@ -147,17 +147,10 @@ func (srv PrometheusSrv) RouteGetRuleStatuses(c *models.ReqContext) response.Res
 		if !ok {
 			continue
 		}
-		var queryStr string
-		encodedQuery, err := json.Marshal(rule.Data)
-		if err != nil {
-			queryStr = err.Error()
-		} else {
-			queryStr = string(encodedQuery)
-		}
 		alertingRule := apimodels.AlertingRule{
 			State:       "inactive",
 			Name:        rule.Title,
-			Query:       queryStr,
+			Query:       ruleToQuery(srv.log, rule),
 			Duration:    rule.For.Seconds(),
 			Annotations: rule.Annotations,
 		}
@@ -217,4 +210,38 @@ func (srv PrometheusSrv) RouteGetRuleStatuses(c *models.ReqContext) response.Res
 		newGroup.Interval = float64(rule.IntervalSeconds)
 	}
 	return response.JSON(http.StatusOK, ruleResponse)
+}
+
+func ruleToQuery(logger log.Logger, rule *ngmodels.AlertRule) string {
+	if len(rule.Data) == 1 {
+		q, err := rule.Data[0].GetQuery()
+		if err == nil {
+			return q
+		}
+		logger.Debug("unable to get query", "err", err)
+	}
+
+	var queryErr error
+	var queries []string
+
+	for _, q := range rule.Data {
+		q, err := q.GetQuery()
+		if err == nil {
+			queries = append(queries, q)
+		}
+		queryErr = err
+		logger.Debug("unable to at least one query", "err", err)
+		break
+	}
+
+	if queryErr == nil {
+		return strings.Join(queries, " | ")
+	}
+
+	encodedQueries, err := json.Marshal(rule.Data)
+	if err == nil {
+		return string(encodedQueries)
+	}
+
+	return err.Error()
 }
